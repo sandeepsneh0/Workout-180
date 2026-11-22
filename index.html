@@ -1,0 +1,845 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>180-Day Shred Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Big+Shoulders+Display:wght@700;800;900&display=swap">
+<style>
+/* Layout: sticky tab bar over one working surface. Each week is a dark band (week number, calories, steps, protein)
+   followed by four session cards with a tick box and kg x reps for every set. Phases are marked with Olympic plate
+   colours: 5 kg white, 10 kg green, 15 kg yellow, 20 kg blue, 25 kg red. */
+:root{
+  --bg:#eceeef; --surface:#ffffff; --surface-2:#f4f5f6; --ink:#101214; --ink-2:#3a4147; --muted:#646c73;
+  --line:#d8dcdf; --line-strong:#aeb4ba;
+  --band:#101214; --band-ink:#f3f4f4; --band-muted:#a0a7ad; --band-line:#2d3236;
+  --check:#101214; --check-ink:#ffffff; --focus:#2f6fed;
+  --warn-bg:#fff2d9; --warn-ink:#5c3b00; --warn-line:#e4b35a;
+  --p1:#c3c8cd; --p2:#2e9b57; --p3:#e3b616; --p4:#2f6fed; --p5:#d9382c;
+  --display:'Big Shoulders Display','Barlow Condensed','Arial Narrow',sans-serif;
+  --body:'Barlow',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c0e0f; --surface:#151819; --surface-2:#1c2022; --ink:#eef0f1; --ink-2:#c5cacd; --muted:#8d959b;
+    --line:#2a2f33; --line-strong:#454c52;
+    --band:#1d2225; --band-ink:#f1f3f3; --band-muted:#9aa2a8; --band-line:#353c41;
+    --check:#eef0f1; --check-ink:#101214; --focus:#6b9bff;
+    --warn-bg:#33270f; --warn-ink:#f1d9a3; --warn-line:#6b5220;
+    --p1:#aeb4ba; --p2:#3fb56b; --p3:#e8c12e; --p4:#5b8dfa; --p5:#ee5648;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e0f; --surface:#151819; --surface-2:#1c2022; --ink:#eef0f1; --ink-2:#c5cacd; --muted:#8d959b;
+  --line:#2a2f33; --line-strong:#454c52;
+  --band:#1d2225; --band-ink:#f1f3f3; --band-muted:#9aa2a8; --band-line:#353c41;
+  --check:#eef0f1; --check-ink:#101214; --focus:#6b9bff;
+  --warn-bg:#33270f; --warn-ink:#f1d9a3; --warn-line:#6b5220;
+  --p1:#aeb4ba; --p2:#3fb56b; --p3:#e8c12e; --p4:#5b8dfa; --p5:#ee5648;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:500 15px/1.45 var(--body);-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:40}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:16px 10px}
+.brand{font:900 28px/1 var(--display);letter-spacing:.03em;text-transform:uppercase;margin:0;white-space:nowrap}
+.brand small{display:block;margin-top:4px;font:600 11px/1 var(--body);letter-spacing:.16em;color:var(--muted)}
+.status{display:inline-flex;align-items:center;gap:7px;font:600 12px/1 var(--body);color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:7px 11px;white-space:nowrap}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--p2)}
+.status.saving i{background:var(--p3)} .status.local i{background:var(--p1)} .status.err i{background:var(--p5)}
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--bg);border-bottom:1px solid var(--line)}
+.tabs .wrap{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.tabs button{flex:none;border:0;background:none;padding:12px 14px 11px;font:700 13px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
+.tabs button[aria-current="page"]{color:var(--ink);border-bottom-color:var(--ink)}
+main{padding-block:16px 40px}
+
+/* plates */
+.plate{display:inline-block;width:14px;height:14px;flex:none;border-radius:50%;background:radial-gradient(circle,var(--hole,var(--bg)) 0 21%,var(--pc) 23%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+
+/* hero */
+.hero{--hole:var(--band);background:var(--band);color:var(--band-ink);border-radius:16px;padding:16px 18px 18px}
+.hero-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hero-nav .sp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:8px;font:700 12px/1 var(--body);letter-spacing:.12em;text-transform:uppercase}
+.hbtn{border:1px solid var(--band-line);background:transparent;color:var(--band-ink);border-radius:8px;min-height:36px;padding:0 12px;font:600 13px/1 var(--body)}
+.hbtn:disabled{opacity:.35;cursor:default}
+.hero select{border:1px solid var(--band-line);background:var(--band);color:var(--band-ink);border-radius:8px;min-height:36px;padding:0 8px;font:600 13px var(--body);max-width:100%}
+.hero-main{display:flex;align-items:flex-end;gap:clamp(16px,5vw,56px);margin-top:14px;flex-wrap:wrap}
+.wk small{display:block;font:700 12px/1 var(--body);letter-spacing:.2em;color:var(--band-muted);margin-bottom:6px}
+.wk b{display:block;font:900 clamp(92px,24vw,150px)/.78 var(--display);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;flex:1;min-width:min(100%,300px);margin:0}
+.stats div{border-top:1px solid var(--band-line);padding-top:8px;min-width:0}
+.stats dt{font:700 11px/1 var(--body);letter-spacing:.16em;text-transform:uppercase;color:var(--band-muted)}
+.stats dd{margin:8px 0 0;font:800 clamp(28px,6.5vw,42px)/1 var(--display);letter-spacing:.01em;font-variant-numeric:tabular-nums}
+.stats small{display:block;margin-top:4px;font:500 12px/1.3 var(--body);color:var(--band-muted)}
+.wbar{display:grid;grid-template-columns:repeat(26,minmax(0,1fr));gap:3px;margin-top:18px}
+.seg{height:30px;border:0;padding:0;border-radius:3px;background:color-mix(in srgb,var(--pc) 30%,transparent);position:relative}
+.seg.done{background:var(--pc)}
+.seg.cur{outline:2px solid var(--band-ink);outline-offset:2px}
+.seg.now::after{content:"";position:absolute;left:50%;bottom:-7px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--band-ink)}
+.wlab{display:none;grid-template-columns:repeat(26,minmax(0,1fr));gap:3px;margin-top:6px;font:600 10px/1 var(--body);color:var(--band-muted);text-align:center}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:14px;font:600 12px/1.2 var(--body);color:var(--band-muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.thisweek{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--band-line);font-size:15px}
+.thisweek b{font:700 11px/1 var(--body);letter-spacing:.16em;text-transform:uppercase;color:var(--band-muted);margin-right:10px}
+@media(min-width:700px){.wlab{display:grid}}
+
+/* day strip */
+.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:14px}
+.day{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 4px 9px;text-align:center;min-height:68px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:4px;color:var(--muted)}
+.day .dn{font:700 10px/1 var(--body);letter-spacing:.12em;text-transform:uppercase}
+.day .code{font:800 22px/1 var(--display);color:var(--ink);text-transform:uppercase}
+.day .full{display:none}
+.day.rest .code{color:var(--line-strong);font-size:18px}
+button.day{cursor:pointer}
+.day.today{box-shadow:0 0 0 2px var(--ink)}
+.day.done{background:var(--check);border-color:var(--check);color:var(--check-ink)}
+.day.done .code{color:var(--check-ink)}
+.day .dd{font:600 11px/1 var(--body)}
+@media(min-width:700px){.day .code{display:none}.day .full{display:block;font:800 22px/1 var(--display);color:var(--ink);text-transform:uppercase}.day.done .full{color:var(--check-ink)}.day.rest .full{color:var(--line-strong);font-size:18px}}
+
+/* cards + sessions */
+.card{--hole:var(--surface);background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.sessions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));gap:14px;margin-top:14px;align-items:start}
+.sess-h{padding:14px 16px 12px;display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:end}
+.sess-h h3{margin:0;font:800 32px/1 var(--display);letter-spacing:.02em;text-transform:uppercase}
+.sess-h .sub{color:var(--muted);font-size:13px}
+.sess-h .cnt{font:700 14px/1 var(--body);font-variant-numeric:tabular-nums;text-align:right}
+.meter{grid-column:1/-1;height:4px;margin-top:10px;background:var(--line);border-radius:2px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--ink);transition:width .2s}
+.colhead{display:none}
+.ex{display:grid;grid-template-columns:1fr 1fr;gap:7px 8px;padding:10px 16px 12px;border-top:1px solid var(--line)}
+.ex .nm{grid-column:1/-1;font-weight:600}
+@media(min-width:560px){
+  .ex{grid-template-columns:minmax(0,1fr) 128px 128px;align-items:center;padding:8px 16px}
+  .ex .nm{grid-column:auto}
+  .colhead{display:grid;grid-template-columns:minmax(0,1fr) 128px 128px;gap:8px;padding:0 16px 6px;font:700 11px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+}
+.set{display:flex;align-items:center;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px 6px 3px 3px;min-width:0}
+.set.done{border-color:var(--ink)}
+.set .x{color:var(--muted);font-weight:600}
+.num{width:100%;min-width:0;flex:1;border:0;background:transparent;text-align:center;font:700 15px/1 var(--body);padding:9px 0;-moz-appearance:textfield;appearance:textfield}
+.num::-webkit-outer-spin-button,.num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.num::placeholder{color:var(--muted);font-weight:500;opacity:.8}
+.tick{position:relative;display:block;flex:none;width:32px;height:32px}
+.tick input{-webkit-appearance:none;appearance:none;margin:0;display:block;width:32px;height:32px;border:2px solid var(--line-strong);border-radius:9px;background:var(--surface);cursor:pointer}
+.tick input:checked{background:var(--check);border-color:var(--check)}
+.tick input:checked::after{content:"";position:absolute;left:11px;top:6px;width:8px;height:15px;border:solid var(--check-ink);border-width:0 3px 3px 0;transform:rotate(45deg)}
+.tick.sm,.tick.sm input{width:26px;height:26px;border-radius:7px}
+.tick.sm input:checked::after{left:8px;top:3px;width:7px;height:13px}
+.linkbtn{border:0;background:none;padding:6px 0;font:700 12px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:underline;text-underline-offset:3px}
+.sess-f{display:flex;justify-content:flex-end;padding:6px 16px 12px;border-top:1px solid var(--line)}
+
+/* generic blocks */
+.block{margin-top:14px;padding:16px}
+.block h2{margin:0 0 4px;font:800 26px/1.05 var(--display);letter-spacing:.02em;text-transform:uppercase}
+.block h3{margin:0 0 6px;font:800 20px/1.1 var(--display);letter-spacing:.02em;text-transform:uppercase}
+.lede{margin:0 0 12px;color:var(--ink-2);max-width:68ch}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.hab{max-width:640px;display:grid;grid-template-columns:minmax(64px,1.3fr) repeat(7,minmax(0,1fr)) 30px;gap:8px 3px;align-items:center;justify-items:center}
+.hab .l{justify-self:start;font-weight:600;font-size:13px}
+.hab .hd{font:700 11px/1.1 var(--body);letter-spacing:.06em;color:var(--muted);text-align:center}
+.hab .hd.today{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
+.hab .ct{font:700 12px var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+.keys{margin:12px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:4px 16px;font-size:12px;color:var(--muted)}
+.keys b{color:var(--ink-2)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fld label,.fld .lbl{font:700 11px/1.2 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.fld input,.fld select,.fld textarea{width:100%;min-width:0;border:1px solid var(--line-strong);background:var(--surface);border-radius:9px;padding:10px 11px;font:600 16px/1.2 var(--body)}
+.fld textarea{resize:vertical;min-height:72px;font-weight:500;font-size:15px;line-height:1.4}
+.fld .ro{border:1px dashed var(--line-strong);border-radius:9px;padding:10px 11px;font:700 16px/1.2 var(--body);background:var(--surface-2)}
+.fld .hint{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0;text-transform:none}
+.flag{margin-top:12px;border-radius:10px;border:1px solid var(--warn-line);background:var(--warn-bg);color:var(--warn-ink);padding:10px 12px;font-size:14px}
+.flag:empty{display:none}
+.note{border-radius:10px;border:1px solid var(--line);background:var(--surface-2);padding:12px 14px;font-size:14px;color:var(--ink-2)}
+.steps{list-style:none;margin:0;padding:0}
+.steps li{display:grid;grid-template-columns:32px 1fr;gap:4px 14px;padding:14px 0;border-top:1px solid var(--line)}
+.steps li:first-child{border-top:0;padding-top:4px}
+.steps h3{margin:0 0 2px;font:700 17px/1.2 var(--body);text-transform:none;letter-spacing:0}
+.steps p{margin:0;color:var(--ink-2);font-size:14px}
+.nav2{display:flex;justify-content:space-between;gap:10px;margin-top:14px}
+.btn{border:1px solid var(--line-strong);background:var(--surface);border-radius:10px;min-height:42px;padding:0 16px;font:700 13px/1 var(--body);letter-spacing:.06em;text-transform:uppercase}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.solid{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* overview */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.tile .v{font:800 36px/1 var(--display);font-variant-numeric:tabular-nums}
+.tile .k{margin-top:6px;font:700 11px/1.2 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.glance{position:relative;display:grid;grid-template-columns:repeat(26,minmax(0,1fr));gap:3px;align-items:end;height:170px;margin-top:22px;border-bottom:1px solid var(--line-strong)}
+.glance .mline{position:absolute;left:0;right:0;top:0;border-top:1px dashed var(--line-strong);pointer-events:none}
+.glance .mlab{position:absolute;right:0;top:-18px;font:600 11px/1 var(--body);color:var(--muted)}
+.glance .b{background:var(--pc);border-radius:2px 2px 0 0;min-height:2px;position:relative}
+.glance .b.rng{background:linear-gradient(to bottom,transparent 0,transparent var(--gap),var(--pc) var(--gap))}
+.glance .b.rng::before{content:"";position:absolute;inset:0 0 auto;height:var(--gap);border:1.5px dashed var(--pc);border-bottom:0;border-radius:2px 2px 0 0}
+.glab{display:grid;grid-template-columns:repeat(26,minmax(0,1fr));gap:3px;margin-top:6px;font:600 10px/1 var(--body);color:var(--muted);text-align:center}
+.glab span{overflow:visible;white-space:nowrap}
+.gsteps{display:grid;grid-template-columns:4fr 16fr 6fr;gap:3px;margin-top:10px}
+.gsteps div{background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:6px 4px;text-align:center;font:700 12px/1 var(--body);font-variant-numeric:tabular-nums}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:14px}
+.wc{--hole:var(--surface);text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:7px;min-width:0}
+.wc:hover{border-color:var(--ink)}
+.wc.now{box-shadow:0 0 0 2px var(--ink)}
+.wc .t{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.wc .n{font:800 34px/1 var(--display);font-variant-numeric:tabular-nums}
+.wc .dt{font-size:12px;color:var(--muted)}
+.wc .m{font:700 13px/1.2 var(--body);font-variant-numeric:tabular-nums}
+.pips{display:flex;gap:4px}
+.pips i{width:100%;height:8px;border-radius:2px;background:var(--line)}
+.pips i.on{background:var(--ink)}
+.wc .mini{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* progress */
+#chart{margin-top:10px}
+#chart svg{display:block;max-width:100%}
+.tscroll{overflow-x:auto;margin-top:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table.pt{border-collapse:collapse;width:100%;min-width:640px;font-variant-numeric:tabular-nums}
+.pt th{font:700 11px/1.2 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 8px;border-bottom:1px solid var(--line-strong);white-space:nowrap}
+.pt td{padding:3px 4px;border-bottom:1px solid var(--line)}
+.pt td:first-child,.pt th:first-child{padding-left:12px;font-weight:700}
+.pt tr.ph td{background:var(--surface-2)}
+.pt input{width:100%;min-width:0;border:1px solid var(--line);background:var(--surface-2);padding:7px 8px;font:600 15px var(--body);border-radius:7px}
+.pt input:focus{background:var(--surface);border-color:var(--ink)}
+.pt th:nth-child(2),.pt th:nth-child(3),.pt th:nth-child(4){width:112px}
+.pt .nt{min-width:180px}
+.pt .dl{font-size:12px;color:var(--muted);padding:0 6px;white-space:nowrap}
+.pt .ps{font-size:12px;color:var(--muted);white-space:nowrap}
+
+/* food */
+.seg2{display:inline-flex;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;margin:6px 0 12px}
+.seg2 button{border:0;background:var(--surface);padding:10px 16px;font:700 13px/1 var(--body);letter-spacing:.06em}
+.seg2 button+button{border-left:1px solid var(--line-strong)}
+.seg2 button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.macros{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.macros div{border-top:2px solid var(--ink);padding-top:6px}
+.macros b{display:block;font:800 28px/1 var(--display);font-variant-numeric:tabular-nums}
+.macros span{font:700 11px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.meals{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+.meal{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--surface)}
+.meal .k{display:flex;justify-content:space-between;gap:8px;font:700 11px/1.2 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.meal h4{margin:6px 0 8px;font:800 22px/1.05 var(--display);letter-spacing:.02em;text-transform:uppercase}
+.meal ul{list-style:none;margin:0;padding:0}
+.meal li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.meal li b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.go{list-style:none;margin:0;padding:0}
+.go li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:2px 12px;padding:12px 0;border-top:1px solid var(--line)}
+.go li:first-child{border-top:0}
+.go .i{font:800 22px/1 var(--display);color:var(--muted)}
+.go b{display:block}
+.go p{margin:2px 0 0;font-size:13px;color:var(--ink-2)}
+.go .nu{text-align:right;font:700 13px/1.3 var(--body);font-variant-numeric:tabular-nums;white-space:nowrap}
+.shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px}
+.shop h4{margin:0 0 6px;font:700 11px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.shop label{display:flex;align-items:center;gap:10px;padding:5px 0;cursor:pointer}
+.shop label.on span{color:var(--muted);text-decoration:line-through}
+
+/* numbers */
+.ptable{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.ptable th{font:700 11px/1.2 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 6px;border-bottom:1px solid var(--line-strong)}
+.ptable td{padding:9px 6px;border-bottom:1px solid var(--line)}
+.ptable td:last-child,.ptable th:last-child{text-align:right}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.rule{background:var(--band);color:var(--band-ink);border-radius:12px;padding:14px 16px}
+.rule b{display:block;font:800 40px/1 var(--display)}
+.rule strong{display:block;margin:6px 0 4px}
+.rule span{font-size:13px;color:var(--band-muted)}
+.foot{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);max-width:76ch}
+a{color:inherit}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+@media(max-width:420px){
+  .hab{gap:8px 2px;grid-template-columns:minmax(56px,1.2fr) repeat(7,minmax(0,1fr)) 24px}
+  .hab .tick.sm,.hab .tick.sm input{width:24px;height:24px}
+  .hab .tick.sm input:checked::after{left:7px;top:2px}
+  .macros b{font-size:24px}
+}
+</style>
+
+<div class="wrap top">
+  <h1 class="brand">180-Day Shred<small>Workout tracker</small></h1>
+  <span class="status local" id="status" role="status"><i></i><span id="statusTxt">Loading</span></span>
+</div>
+<nav class="tabs" aria-label="Sections"><div class="wrap" id="tabs"></div></nav>
+<main class="wrap"><div id="view"></div>
+  <p class="foot">Built from your copy of The 180-Day Shred. The plan is for your personal use only, so keep this page private. This is not medical advice: check with your doctor before starting a new diet or exercise programme.</p>
+</main>
+
+<script>
+(function(){
+'use strict';
+var WEEKS = [{"n":1,"ph":1,"m":1.0,"steps":8000,"note":"Find your maintenance calories, walk 8,000 steps a day and get ready. Training starts next week.","ss":[]},{"n":2,"ph":1,"m":0.79,"steps":8000,"note":"Your first week in a deficit, and training starts: four sessions this week.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Hamstring curl","Leg extension"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Dumbbell shoulder press","Chest-supported row","Tricep pushdown","Seated dumbbell curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Leg press","Leg extension"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","Machine lateral raise","Skull crusher"]}]},{"n":3,"ph":1,"m":0.79,"steps":8000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Leg press","Hamstring curl","Calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Leg press","Leg extension"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Seated shoulder press","EZ-bar skull crusher","Barbell bicep curl","Machine lateral raise"]}]},{"n":4,"ph":1,"m":0.79,"steps":8000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Leg press","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Leg press","Leg extension","Calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","EZ-bar skull crusher","Preacher curl","Machine lateral raise"]}]},{"n":5,"ph":2,"m":0.76,"steps":12000,"note":"Calories down to × 0.76 of maintenance. Steps up to 12,000 a day.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Leg press","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Leg press","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":6,"ph":2,"m":0.76,"steps":12000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Leg press","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Seated bicep curl","Tricep pushdown"]},{"n":"LOWER 2","ex":["Barbell back squat","Leg press","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","Hammer curl","EZ-bar skull crusher","Machine lateral raise"]}]},{"n":7,"ph":2,"m":0.74,"steps":12000,"note":"Calories down to × 0.74 of maintenance.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Leg press","Hamstring curl"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Leg press","Leg extension"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":8,"ph":2,"m":0.74,"steps":12000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Leg press","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Leg press","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":9,"ph":2,"m":0.74,"steps":12000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Leg press","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Leg press","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":10,"ph":2,"m":0.71,"steps":12000,"note":"Calories down to × 0.71 of maintenance.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Leg press","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Leg press","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":11,"ph":2,"m":0.71,"steps":12000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Leg press","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Leg press","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":12,"ph":3,"m":0.65,"steps":12000,"note":"Calories down to × 0.65 of maintenance.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Walking lunge","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Walking lunge","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":13,"ph":3,"m":0.65,"steps":12000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Walking lunge","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Walking lunge","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":14,"ph":3,"m":0.65,"steps":12000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Walking lunge","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Walking lunge","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":15,"ph":3,"m":0.65,"steps":12000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Walking lunge","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Walking lunge","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":16,"ph":3,"m":0.65,"steps":12000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Walking lunge","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Walking lunge","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":17,"ph":3,"m":0.65,"steps":12000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Hack squat","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Pendulum squat","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":18,"ph":3,"m":0.65,"steps":12000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Hack squat","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Leg raise","Machine crunch","Incline bench press","Lat pulldown","Shoulder press","Chest-supported row","Reverse cable fly","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Pendulum squat","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Cable fly","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":19,"ph":4,"m":[0.85,1.0],"steps":12000,"note":"Diet break: eat at or just under maintenance. Keep all four sessions and your steps.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Hack squat","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Leg raise","Machine crunch","Incline bench press","Lat pulldown","Shoulder press","Chest-supported row","Reverse cable fly","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Pendulum squat","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Incline barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Cable fly","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":20,"ph":5,"m":0.65,"steps":12000,"note":"Back into the deficit at × 0.65.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Hack squat","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Leg raise","Machine crunch","Incline bench press","Lat pulldown","Shoulder press","Chest-supported row","Reverse cable fly","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Pendulum squat","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Incline barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Cable fly","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":21,"ph":5,"m":0.65,"steps":15000,"note":"Steps up to 15,000 a day.","ss":[{"n":"LOWER 1","ex":["Barbell back squat","Hack squat","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Hanging leg raise","Machine crunch","Incline bench press","Lat pulldown","Shoulder press","Chest-supported row","Reverse cable fly","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Pendulum squat","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Incline barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Cable fly","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":22,"ph":5,"m":0.65,"steps":15000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Ab wheel rollout","Cable woodchopper","Barbell back squat","Hack squat","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Hanging leg raise","Machine crunch","Incline bench press","Lat pulldown","Shoulder press","Chest-supported row","Reverse cable fly","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Pendulum squat","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Incline barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Cable fly","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":23,"ph":5,"m":0.65,"steps":15000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Ab wheel rollout","Cable woodchopper","Barbell back squat","Hack squat","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Hanging leg raise","Machine crunch","Incline bench press","Lat pulldown","Shoulder press","Chest-supported row","Reverse cable fly","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Pendulum squat","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Incline barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Cable fly","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":24,"ph":5,"m":0.65,"steps":15000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Ab wheel rollout","Cable woodchopper","Barbell back squat","Hack squat","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Hanging leg raise","Machine crunch","Incline bench press","Lat pulldown","Shoulder press","Chest-supported row","Reverse cable fly","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Pendulum squat","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Incline barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Cable fly","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":25,"ph":5,"m":0.62,"steps":15000,"note":"Calories down to × 0.62 of maintenance.","ss":[{"n":"LOWER 1","ex":["Ab wheel rollout","Cable woodchopper","Barbell back squat","Hack squat","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Hanging leg raise","Machine crunch","Incline bench press","Lat pulldown","Shoulder press","Chest-supported row","Reverse cable fly","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Pendulum squat","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Incline barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Cable fly","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]},{"n":26,"ph":5,"m":0.62,"steps":15000,"note":"Same calories and steps as last week. Add a rep or two to each set where you can.","ss":[{"n":"LOWER 1","ex":["Ab wheel rollout","Cable woodchopper","Barbell back squat","Hack squat","Hamstring curl","Seated calf raise"]},{"n":"UPPER 1","ex":["Hanging leg raise","Machine crunch","Incline bench press","Lat pulldown","Shoulder press","Chest-supported row","Reverse cable fly","Tricep pushdown","Seated bicep curl"]},{"n":"LOWER 2","ex":["Barbell back squat","Pendulum squat","Leg extension","Seated calf raise"]},{"n":"UPPER 2","ex":["Incline barbell bench press","Lat pulldown","Shoulder press","Chest-supported row","Cable fly","EZ-bar skull crusher","Hammer curl","Machine lateral raise"]}]}];
+var PHASES = [null,
+  {n:'Phase 1 · Foundation',s:'Foundation',c:'--p1',r:'1–4'},
+  {n:'Phase 2 · Build',s:'Build',c:'--p2',r:'5–11'},
+  {n:'Phase 3 · Push',s:'Push',c:'--p3',r:'12–18'},
+  {n:'Diet break',s:'Diet break',c:'--p4',r:'19'},
+  {n:'Phase 4 · Finish',s:'Finish',c:'--p5',r:'20–26'}];
+var SLOT=[0,1,3,4];                       /* Mon, Tue, Thu, Fri */
+var DAYN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+var HABITS=[['Steps',"Hit this week's step target."],['Calories',"Stayed within this week's calories."],['Protein','Hit your daily protein.'],['Water','Drank 2–3 litres.'],['Workout',"Did today's planned session. Rest days count."]];
+var PHOTO_WEEKS=[0,4,8,12,16,20,24];
+
+var FOOD={
+  plans:[
+   {k:2500,cal:'2,500',p:234,c:284,f:50,intro:'How I ate early in the cut, with a chicken burrito for lunch. Use when your daily target is around 2,500.',m:[
+     ['Breakfast','My breakfast shake',733,65,[['Oats','80 g'],['0% Greek yogurt','200 g'],['Protein powder','1 scoop'],['Frozen mixed berries','80 g'],['Low-fat milk','200 ml'],['Honey, chia seeds, flax seeds','5 g each']]],
+     ['Lunch','Chicken burrito',840,72,[['Medium wholemeal wraps','2'],['Chicken breast (raw)','200 g'],['Black beans (drained)','200 g'],['Sweetcorn','50 g'],['Perinaise','15 g']]],
+     ['Dinner','Beef, sweet potato & broccoli',557,52,[['5% beef mince (raw)','200 g'],['Sweet potato','300 g'],['Broccoli','150 g']]],
+     ['Dessert','Protein yogurt & Oreos',370,46,[['0% Greek yogurt','200 g'],['Protein powder','1 scoop'],['Honey','10 g'],['Oreos, crushed','2']]]]},
+   {k:2000,cal:'1,996',p:181,c:195,f:51,intro:'When calories drop, swap the burrito for chicken and rice. Use when your daily target is around 2,000.',m:[
+     ['Breakfast','Scrambled eggs on toast',454,43,[['Whole eggs','3'],['Egg whites','150 g'],['Wholemeal toast','2 slices']]],
+     ['Lunch','Sweet chilli chicken & rice',599,52,[['Rice (dry)','85 g'],['Chicken breast (raw)','200 g'],['Sweet chilli sauce','20 g'],['Soy sauce','15 ml']]],
+     ['Dinner','Salmon, potatoes & greens',588,40,[['Salmon fillet (raw)','150 g'],['White potatoes','300 g'],['Green veg','150 g']]],
+     ['Dessert','Protein yogurt & Oreos',355,46,[['0% Greek yogurt','200 g'],['Protein powder','1 scoop'],['Honey','5 g'],['Oreos, crushed','2']]]]},
+   {k:1600,cal:'1,598',p:181,c:163,f:27,intro:'The leanest version, for targets around 1,600. Carb portions shrink again and protein stays high to protect muscle.',m:[
+     ['Breakfast','My breakfast shake',497,55,[['Oats','30 g'],['0% Greek yogurt','200 g'],['Protein powder','1 scoop'],['Frozen mixed berries','80 g'],['Low-fat milk','100 ml'],['Honey, chia seeds, flax seeds','5 g each']]],
+     ['Lunch','Sweet chilli chicken & rice',462,50,[['Rice (dry)','50 g'],['Chicken breast (raw)','200 g'],['Sweet chilli sauce','15 g'],['Soy sauce','15 ml']]],
+     ['Dinner','Beef, sweet potato & broccoli',429,46,[['5% beef mince (raw)','180 g'],['Sweet potato','180 g'],['Broccoli','150 g']]],
+     ['Dessert','Cottage cheese & honey',210,30,[['Low-fat cottage cheese','250 g'],['Honey','10 g']]]]}
+  ],
+  go:[
+   ['My breakfast shake','Blend 80 g oats, 200 g 0% Greek yogurt, 1 scoop protein powder, 80 g frozen mixed berries and 200 ml low-fat milk with 5 g each of honey, chia seeds and flax seeds.',733,65],
+   ['Chicken burrito','Cook 200 g chicken breast and 200 g drained black beans. Split between 2 medium wholemeal wraps with 50 g sweetcorn and 15 g Perinaise.',840,72],
+   ['Sweet chilli chicken & rice','Cook 80 g rice. Stir-fry 300 g chicken breast with 20 g sweet chilli sauce and 15 ml soy sauce, and serve on the rice.',701,74],
+   ['Beef, sweet potato & broccoli','Brown 200 g 5% beef mince. Serve with 250 g roasted or mashed sweet potato and 150 g steamed broccoli.',514,51],
+   ['Protein yogurt & Oreos','Mix 200 g 0% Greek yogurt with 1 scoop protein powder and 10 g honey. Top with 2 crushed Oreos.',370,46],
+   ['Scrambled eggs on toast','Scramble 3 eggs with 150 g egg whites and serve on 2 slices of wholemeal toast.',454,43],
+   ['Tuna pasta','Toss 75 g cooked pasta with a tin of tuna in water, 50 g sweetcorn and 15 g light mayo.',468,38],
+   ['Turkey chilli','Brown 200 g turkey mince, add 200 g chopped tomatoes, 120 g kidney beans and chilli spice. Serve on 60 g rice.',626,59],
+   ['Salmon, potatoes & greens','Bake a 150 g salmon fillet. Serve with 300 g boiled white potatoes and 150 g green veg.',588,40],
+   ['Cottage cheese & honey','250 g low-fat cottage cheese with 10 g honey drizzled on top.',210,30]
+  ],
+  shop:[
+   ['Protein',['Chicken breast','5% beef mince','Turkey mince','Salmon fillets','Eggs','Egg whites (carton)','Tinned tuna in water','0% Greek yogurt','Low-fat cottage cheese','Low-fat milk','Protein powder']],
+   ['Carbs',['Oats','Rice','Pasta','Sweet potatoes','Potatoes','Medium wholemeal wraps','Wholemeal bread','Black beans (tin)','Kidney beans (tin)','Oreos']],
+   ['Fruit and veg',['Frozen mixed berries','Broccoli','Green veg','Sweetcorn','Chopped tomatoes (tin)']],
+   ['Extras',['Chia seeds','Flax seeds','Honey','Perinaise','Sweet chilli sauce','Soy sauce','Light mayo','Chilli spice']]
+  ]
+};
+
+/* ---------- helpers ---------- */
+function $(s,r){return (r||document).querySelector(s)}
+function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function fmt(n){return Number(n).toLocaleString('en-US')}
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function r50(x){return Math.round(x/50)*50}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function cap(s){return s.charAt(0)+s.slice(1).toLowerCase()}
+function num(v){var x=parseFloat(v);return isNaN(x)?null:x}
+function stable(o){if(o===null||typeof o!=='object')return JSON.stringify(o);if(Array.isArray(o))return '['+o.map(stable).join(',')+']';return '{'+Object.keys(o).sort().map(function(k){return JSON.stringify(k)+':'+stable(o[k])}).join(',')+'}'}
+
+/* ---------- state ---------- */
+function defaults(){return {settings:{w:96,ft:6,inch:3,age:23,sex:'m',maint:null,start:'2026-11-23',waist0:null},train:{},habits:{},log:{},shop:{}}}
+var S=defaults();
+var LS_KEY='shred.v1';
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+(function(){var raw=lsGet(LS_KEY);if(!raw)return;try{var p=JSON.parse(raw);Object.keys(S).forEach(function(k){if(p[k]&&typeof p[k]==='object'){S[k]=(k==='settings')?Object.assign({},S[k],p[k]):p[k]}})}catch(e){}})();
+function saveLocal(){lsSet(LS_KEY,JSON.stringify(S))}
+
+/* ---------- storage: private per-viewer docs, mirrored on this device ---------- */
+var DOCS=['settings','train','habits','log','shop'];
+var refs={},dirty={},ver={},busy={},again={},timers={},loaded={},retryT={};
+var pendingRender=false,loadTimer=null,cloud=false;
+function setStatus(kind){
+  var el=$('#status'),t=$('#statusTxt');if(!el)return;
+  var map={saved:['','Saved'],saving:['saving','Saving…'],local:['local','Saved on this device'],err:['err','Not synced. Kept on this device'],wait:['saving','Loading your progress…'],slow:['err',"Can't reach your saved progress yet"]};
+  var m=map[kind]||map.local;el.className='status '+m[0];t.textContent=m[1];
+}
+function anyDirty(){return DOCS.some(function(d){return dirty[d]})}
+function touch(name){
+  saveLocal();ver[name]=(ver[name]||0)+1;dirty[name]=true;
+  if(!cloud){dirty[name]=false;setStatus('local');return}
+  setStatus('saving');clearTimeout(timers[name]);timers[name]=setTimeout(function(){flush(name)},500);
+}
+function flush(name){
+  if(!refs[name]){dirty[name]=false;return}
+  if(busy[name]){again[name]=true;return}
+  busy[name]=true;var v=ver[name];var data=clone(S[name]);
+  refs[name].set(data).then(function(){
+    busy[name]=false;
+    if(again[name]){again[name]=false;flush(name);return}
+    if(ver[name]===v)dirty[name]=false;
+    setStatus(anyDirty()?'saving':'saved');
+  },function(e){
+    busy[name]=false;
+    var code=e&&e.code;
+    if(code==='unavailable'||code==='resource_exhausted'||!code){setStatus('err');clearTimeout(retryT[name]);retryT[name]=setTimeout(function(){flush(name)},6000)}
+    else{dirty[name]=false;setStatus('err')}
+  });
+}
+function onSnap(name,snap){
+  if(!snap.metadata.fromCache){loaded[name]=true;if(DOCS.every(function(d){return loaded[d]})){clearTimeout(loadTimer);setStatus(anyDirty()?'saving':'saved')}}
+  if(snap.metadata.hasPendingWrites||dirty[name]||!snap.exists)return;
+  var d=clone(snap.data());
+  var next=(name==='settings')?Object.assign({},defaults().settings,d):d;
+  if(stable(next)===stable(S[name]))return;
+  S[name]=next;saveLocal();requestRender();
+}
+function requestRender(){
+  var a=document.activeElement;
+  if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)){pendingRender=true;return}
+  render();
+}
+function initCloud(){
+  if(!window.claude||!window.claude.use){setStatus('local');return}
+  setStatus('wait');
+  Promise.all([window.claude.use('db'),window.claude.use('user')]).then(function(r){
+    var db=r[0],user=r[1];
+    if(!db||!user){setStatus('local');return}
+    return user.id().then(function(uid){
+      if(!uid){setStatus('local');return}
+      var base='data/users/'+uid+'/';
+      DOCS.forEach(function(n){
+        refs[n]=db.doc(base+n);
+        refs[n].onSnapshot(function(s){onSnap(n,s)},function(e){setStatus('err')});
+      });
+      cloud=true;
+      loadTimer=setTimeout(function(){setStatus('slow')},10000);
+    });
+  }).catch(function(){setStatus('local')});
+}
+
+/* ---------- numbers ---------- */
+function heightCm(){return (S.settings.ft*12+S.settings.inch)*2.54}
+function bmr(){var s=S.settings;return 10*s.w+6.25*heightCm()-5*s.age+(s.sex==='f'?-161:5)}
+function maintEst(){return r50(bmr()*1.375)}
+function maint(){return (S.settings.maint>0)?S.settings.maint:maintEst()}
+function curW(){for(var n=26;n>=1;n--){var v=S.log[n]&&S.log[n].w;if(v)return v}return S.settings.w}
+function protein(){return Math.round(2*curW())}
+function kcalFor(W){var m=W.m;if(Array.isArray(m))return [r50(m[0]*maint()),r50(m[1]*maint())];return r50(m*maint())}
+function kcalTxt(W){var k=kcalFor(W);return Array.isArray(k)?fmt(k[0])+'–'+fmt(k[1]):fmt(k)}
+function mulTxt(W){return Array.isArray(W.m)?'× '+W.m[0].toFixed(2)+' to '+W.m[1].toFixed(2):'× '+W.m.toFixed(2)}
+
+/* ---------- dates ---------- */
+var DAY=86400000;
+function utcDay(d){return Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/DAY)}
+function startMon(){var p=(S.settings.start||'2026-11-23').split('-').map(Number);var d=new Date(p[0],p[1]-1,p[2]);d.setDate(d.getDate()-((d.getDay()+6)%7));return d}
+function weekStart(n){var d=startMon();d.setDate(d.getDate()+(n-1)*7);return d}
+function fmtD(d){return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}
+function rangeTxt(n){var a=weekStart(n),b=new Date(a);b.setDate(b.getDate()+6);return fmtD(a)+' – '+fmtD(b)}
+function weekNow(){return Math.floor((utcDay(new Date())-utcDay(startMon()))/7)+1}   /* <1 = not started, >26 = finished */
+function todayIdx(){return (new Date().getDay()+6)%7}
+
+/* ---------- training state ---------- */
+function setKey(w,s,e,n){return w+'.'+s+'.'+e+'.'+n}
+function patchSet(k,patch){
+  var cur=Object.assign({},S.train[k]||{},patch);
+  ['k','r'].forEach(function(f){if(cur[f]===''||cur[f]==null||(typeof cur[f]==='number'&&isNaN(cur[f])))delete cur[f]});
+  if(!cur.d)delete cur.d;
+  if(Object.keys(cur).length)S.train[k]=cur;else delete S.train[k];
+  touch('train');
+}
+function sessionStats(w,si){
+  var s=WEEKS[w-1].ss[si],total=s.ex.length*2,done=0;
+  s.ex.forEach(function(_,ei){for(var n=0;n<2;n++){var r=S.train[setKey(w,si,ei,n)];if(r&&r.d)done++}});
+  return {done:done,total:total};
+}
+function sessDone(w,si){var s=sessionStats(w,si);return s.total>0&&s.done===s.total}
+function sessionsDone(w){var c=0;WEEKS[w-1].ss.forEach(function(_,si){if(sessDone(w,si))c++});return c}
+function tasks1(){return (S.habits.t1||'000')}
+function weekComplete(w){return w===1?tasks1()==='111':sessionsDone(w)===4}
+function habitStr(w){return ((S.habits[w]||'')+'0'.repeat(35)).slice(0,35)}
+function habitCount(w){return habitStr(w).split('1').length-1}
+function setHab(w,i,v){var a=habitStr(w).split('');a[i]=v?'1':'0';var s=a.join('');if(s.indexOf('1')<0)delete S.habits[w];else S.habits[w]=s;touch('habits')}
+function setTask(i,v){var a=tasks1().split('');a[i]=v?'1':'0';var s=a.join('');if(s==='000')delete S.habits.t1;else S.habits.t1=s;touch('habits')}
+function setLog(w,f,v){var L=S.log[w]=S.log[w]||{};if(v===''||v==null||(typeof v==='number'&&isNaN(v)))delete L[f];else L[f]=v;if(!Object.keys(L).length)delete S.log[w];touch('log')}
+function setCfg(f,v){S.settings[f]=v;touch('settings')}
+function prevFor(w,sessName,exName){
+  for(var pw=w-1;pw>=1;pw--){
+    var ss=WEEKS[pw-1].ss;
+    for(var si=0;si<ss.length;si++){
+      if(ss[si].n!==sessName)continue;
+      var ei=ss[si].ex.indexOf(exName);if(ei<0)continue;
+      var a=S.train[setKey(pw,si,ei,0)],b=S.train[setKey(pw,si,ei,1)];
+      if((a&&(a.k||a.r))||(b&&(b.k||b.r)))return [a||{},b||{}];
+    }
+  }
+  return null;
+}
+function totals(){
+  var sets=0,vol=0,sessions=0,weeks=0;
+  Object.keys(S.train).forEach(function(k){var r=S.train[k];if(r.d){sets++;if(r.k&&r.r)vol+=r.k*r.r}});
+  WEEKS.forEach(function(W){sessions+=sessionsDone(W.n);if(weekComplete(W.n))weeks++});
+  return {sets:sets,vol:vol,sessions:sessions,weeks:weeks};
+}
+function weightOf(n){if(n===0)return S.settings.w;var L=S.log[n];return L&&L.w?L.w:null}
+function flagsFor(n){
+  var out=[],a=weightOf(n),b=weightOf(n-1),c=n>=2?weightOf(n-2):null;
+  if(!a||!b)return out;
+  if(c&&(c-b)/c>0.01&&(b-a)/b>0.01)out.push("You've lost more than 1% of your body weight a week for two weeks. The book's rule: repeat last week's calories before moving on, and don't cut further.");
+  else if(c&&n>=3&&[19,20,21].indexOf(n)<0&&a>=c-0.1)out.push("Scale flat for two weeks? Check your tracking before cutting more: weigh food, and count oils, drinks and bites.");
+  return out;
+}
+
+/* ---------- view pieces ---------- */
+function tick(attrs,checked,label,sm){
+  return '<label class="tick'+(sm?' sm':'')+'"><input type="checkbox" '+attrs+(checked?' checked':'')+' aria-label="'+esc(label)+'"></label>';
+}
+function plate(ph){return '<i class="plate" style="--pc:var('+PHASES[ph].c+')"></i>'}
+
+function hero(w){
+  var W=WEEKS[w-1],ph=PHASES[W.ph],now=weekNow();
+  var bar=WEEKS.map(function(x){return '<button class="seg'+(weekComplete(x.n)?' done':'')+(x.n===w?' cur':'')+(x.n===now?' now':'')+'" style="--pc:var('+PHASES[x.ph].c+')" data-act="goto" data-w="'+x.n+'" aria-label="Week '+x.n+(weekComplete(x.n)?', complete':'')+'" title="Week '+x.n+'"></button>'}).join('');
+  var lab=WEEKS.map(function(x){return '<span>'+x.n+'</span>'}).join('');
+  var leg=PHASES.slice(1).map(function(p,i){return '<span>'+plate(i+1)+p.s+' '+p.r+'</span>'}).join('');
+  var opts=WEEKS.map(function(x){return '<option value="'+x.n+'"'+(x.n===w?' selected':'')+'>Week '+x.n+' · '+esc(rangeTxt(x.n))+'</option>'}).join('');
+  var k=kcalFor(W),sub;
+  if(w===1)sub='Your maintenance';
+  else if(Array.isArray(W.m))sub=mulTxt(W)+' of maintenance';
+  else sub=mulTxt(W)+' of maintenance · −'+fmt(maint()-k);
+  return '<section class="hero" aria-label="Week '+w+' summary">'+
+   '<div class="hero-nav"><span class="pill">'+plate(W.ph)+esc(ph.n)+'</span><span class="sp"></span>'+
+   '<button class="hbtn" data-act="goto" data-w="'+(w-1)+'"'+(w<=1?' disabled':'')+'>‹ Prev</button>'+
+   '<select id="wsel" data-t="wsel" aria-label="Jump to week">'+opts+'</select>'+
+   '<button class="hbtn" data-act="goto" data-w="'+(w+1)+'"'+(w>=26?' disabled':'')+'>Next ›</button></div>'+
+   '<div class="hero-main"><div class="wk"><small>WEEK'+(w===now?' · THIS WEEK':(w===1&&now<1?' · STARTS '+fmtD(weekStart(1)).toUpperCase():''))+'</small><b>'+String(w).padStart(2,'0')+'</b></div>'+
+   '<dl class="stats"><div><dt>Calories</dt><dd>'+kcalTxt(W)+'</dd><small>'+sub+'</small></div>'+
+   '<div><dt>Steps</dt><dd>'+fmt(W.steps)+'</dd><small>every day</small></div>'+
+   '<div><dt>Protein</dt><dd><span data-bind="protein">'+protein()+'</span> g</dd><small>2 g per kg of body weight</small></div></dl></div>'+
+   '<div class="wbar" role="group" aria-label="All 26 weeks">'+bar+'</div><div class="wlab" aria-hidden="true">'+lab+'</div>'+
+   '<div class="legend">'+leg+'</div>'+
+   '<p class="thisweek"><b>This week</b>'+esc(W.note)+'</p></section>';
+}
+function dayStrip(w){
+  var W=WEEKS[w-1];if(!W.ss.length)return '';
+  var ws=weekStart(w),ti=(w===weekNow())?todayIdx():-1,h='';
+  for(var i=0;i<7;i++){
+    var d=new Date(ws);d.setDate(d.getDate()+i);
+    var si=SLOT.indexOf(i),cls='day'+(i===ti?' today':'');
+    if(si>=0){
+      var nm=W.ss[si].n,code=nm.charAt(0)+nm.slice(-1),done=sessDone(w,si);
+      h+='<button class="'+cls+(done?' done':'')+'" data-act="jump" data-si="'+si+'" aria-label="'+esc(cap(nm))+(done?', done':'')+'"><span class="dn">'+DAYN[i]+'</span><span class="code">'+code+'</span><span class="full">'+esc(cap(nm))+'</span><span class="dd">'+d.getDate()+'</span></button>';
+    }else{
+      h+='<div class="'+cls+' rest"><span class="dn">'+DAYN[i]+'</span><span class="code">Rest</span><span class="full">Rest</span><span class="dd">'+d.getDate()+'</span></div>';
+    }
+  }
+  return '<div class="days" role="group" aria-label="Your week">'+h+'</div>';
+}
+function setCell(w,si,ei,n,prev,exName){
+  var k=setKey(w,si,ei,n),v=S.train[k]||{},fid='s.'+k,p=prev&&prev[n]||{};
+  var lab='Set '+(n+1)+', '+exName;
+  return '<div class="set'+(v.d?' done':'')+'">'+tick('data-t="set" data-k="'+k+'" data-fid="'+fid+'.d"',!!v.d,lab+' done')+
+   '<input class="num" type="number" inputmode="decimal" step="0.5" min="0" placeholder="'+(p.k!=null?p.k:'kg')+'" value="'+(v.k!=null?v.k:'')+'" data-t="kg" data-k="'+k+'" data-fid="'+fid+'.k" aria-label="'+esc(lab)+' weight in kg">'+
+   '<span class="x">×</span>'+
+   '<input class="num" type="number" inputmode="numeric" step="1" min="0" placeholder="'+(p.r!=null?p.r:'reps')+'" value="'+(v.r!=null?v.r:'')+'" data-t="rp" data-k="'+k+'" data-fid="'+fid+'.r" aria-label="'+esc(lab)+' reps"></div>';
+}
+function sessionCard(w,si){
+  var sess=WEEKS[w-1].ss[si],st=sessionStats(w,si),pct=st.total?Math.round(100*st.done/st.total):0;
+  var rows=sess.ex.map(function(name,ei){
+    var prev=prevFor(w,sess.n,name);
+    return '<div class="ex"><div class="nm">'+esc(name)+'</div>'+setCell(w,si,ei,0,prev,name)+setCell(w,si,ei,1,prev,name)+'</div>';
+  }).join('');
+  return '<article class="card" id="sess-'+si+'"><header class="sess-h"><h3>'+esc(cap(sess.n))+'</h3><span class="cnt">'+st.done+'/'+st.total+' sets</span>'+
+   '<span class="sub">Day '+(si+1)+' · '+DAYN[SLOT[si]]+' · 2 sets × 6–12 reps</span><span></span>'+
+   '<div class="meter"><i style="width:'+pct+'%"></i></div></header>'+
+   '<div class="colhead"><span>Exercise</span><span>Set 1 · kg × reps</span><span>Set 2 · kg × reps</span></div>'+rows+
+   '<div class="sess-f"><button class="linkbtn" data-act="all" data-si="'+si+'">'+(st.done===st.total?'Clear all ticks':'Tick all sets')+'</button></div></article>';
+}
+function habitsCard(w){
+  var ws=weekStart(w),s=habitStr(w),ti=(w===weekNow())?todayIdx():-1,h='<span></span>';
+  for(var i=0;i<7;i++){var d=new Date(ws);d.setDate(d.getDate()+i);h+='<span class="hd'+(i===ti?' today':'')+'">'+DAYN[i].charAt(0)+'<br>'+d.getDate()+'</span>'}
+  h+='<span></span>';
+  HABITS.forEach(function(hb,r){
+    h+='<span class="l" title="'+esc(hb[1])+'">'+hb[0]+'</span>';
+    var c=0;
+    for(var i=0;i<7;i++){var on=s.charAt(r*7+i)==='1';if(on)c++;h+=tick('data-t="hab" data-w="'+w+'" data-i="'+(r*7+i)+'" data-fid="h.'+w+'.'+(r*7+i)+'"',on,hb[0]+', '+DAYN[i],true)}
+    h+='<span class="ct">'+c+'/7</span>';
+  });
+  return '<section class="card block"><h2>Daily habits</h2><p class="lede small">Five ticks a day, before bed.</p><div class="hab">'+h+'</div>'+
+   '<ul class="keys">'+HABITS.map(function(hb){return '<li><b>'+hb[0]+'</b> '+esc(hb[1])+'</li>'}).join('')+'</ul></section>';
+}
+function checkinCard(w){
+  var L=S.log[w]||{},photo=PHOTO_WEEKS.indexOf(w)>=0;
+  return '<section class="card block"><h2>Weekly check-in</h2><p class="lede small">Fill this in at the end of the week. Enter the average of your daily morning weigh-ins and measure your waist at the belly button, same morning each week.'+(photo?' <b>Photo week:</b> take front, side and back photos in the same spot and light.':'')+'</p>'+
+   '<div class="form">'+
+   '<div class="fld"><label for="ci-w">Weight (kg), weekly average</label><input id="ci-w" type="number" inputmode="decimal" step="0.1" min="0" value="'+(L.w!=null?L.w:'')+'" data-t="log" data-w="'+w+'" data-f="w" data-fid="ci.w.'+w+'"></div>'+
+   '<div class="fld"><label for="ci-c">Waist (cm)</label><input id="ci-c" type="number" inputmode="decimal" step="0.5" min="0" value="'+(L.c!=null?L.c:'')+'" data-t="log" data-w="'+w+'" data-f="c" data-fid="ci.c.'+w+'"></div>'+
+   '<div class="fld"><label for="ci-s">Average steps</label><input id="ci-s" type="number" inputmode="numeric" step="100" min="0" value="'+(L.s!=null?L.s:'')+'" data-t="log" data-w="'+w+'" data-f="s" data-fid="ci.s.'+w+'"></div>'+
+   (w>1?'<div class="fld"><span class="lbl">Sessions</span><div class="ro">'+sessionsDone(w)+' / 4</div></div>':'')+
+   '</div>'+
+   '<div class="fld" style="margin-top:12px"><label for="ci-n">My note</label><textarea id="ci-n" data-t="log" data-w="'+w+'" data-f="n" data-fid="ci.n.'+w+'" placeholder="How this week felt, and one tip to get through it.">'+esc(L.n||'')+'</textarea></div>'+
+   '<div class="flag" data-bind="flag" data-w="'+w+'" role="status"></div></section>';
+}
+function week1(){
+  var t=tasks1();
+  var items=[
+   ['Find your maintenance calories','Get a starting number from the calorie calculator at <a href="https://www.calculator.net/calorie-calculator.html" target="_blank" rel="noopener">calculator.net</a>. Eat that amount for 7 days, track everything and weigh yourself each morning. If your average weight holds steady, that is your maintenance. If it moves, adjust and test again.'],
+   ['Walk 8,000 steps a day','Your maintenance only holds at the activity level you measured it at, so lock the steps in from day one.'],
+   ['Get ready to train','The four weekly sessions start in Week 2. If any of the lifts are new to you, practise them with a light weight this week so you start with good form.']];
+  var li=items.map(function(it,i){return '<li>'+tick('data-t="task" data-i="'+i+'" data-fid="t.'+i+'"',t.charAt(i)==='1',it[0],false)+'<div><h3>'+it[0]+'</h3><p>'+it[1]+'</p></div></li>'}).join('');
+  return '<section class="card block"><h2>This week</h2><ol class="steps">'+li+'</ol></section>'+yourNumbers();
+}
+function yourNumbers(){
+  var s=S.settings;
+  return '<section class="card block"><h2>Your numbers</h2><p class="lede small">Everything after this week is built on your maintenance. Until you have tested it, the page uses an estimate.</p><div class="form">'+
+   '<div class="fld"><label for="n-w">Body weight (kg)</label><input id="n-w" type="number" inputmode="decimal" step="0.1" min="30" value="'+s.w+'" data-t="cfg" data-f="w" data-fid="n.w"></div>'+
+   '<div class="fld"><span class="lbl">Daily protein (g), body weight × 2</span><div class="ro" data-bind="protein2">'+protein()+'</div></div>'+
+   '<div class="fld"><label for="n-m">Maintenance calories, end of this week</label><input id="n-m" type="number" inputmode="numeric" step="50" min="1000" placeholder="'+maintEst()+'" value="'+(s.maint!=null?s.maint:'')+'" data-t="cfg" data-f="maint" data-fid="n.m"><span class="hint">Estimate until you enter yours: <span data-bind="maintest">'+fmt(maintEst())+'</span></span></div>'+
+   '<div class="fld"><span class="lbl">Week 2 calories (maintenance × 0.79)</span><div class="ro" data-bind="w2">'+fmt(r50(.79*maint()))+'</div></div>'+
+   '</div></section>';
+}
+function viewTrain(w){
+  var W=WEEKS[w-1],h=hero(w);
+  if(w===1)h+=week1();
+  else{h+=dayStrip(w)+'<div class="sessions">'+W.ss.map(function(_,si){return sessionCard(w,si)}).join('')+'</div>'}
+  h+=habitsCard(w)+checkinCard(w);
+  h+='<div class="nav2"><button class="btn" data-act="goto" data-w="'+(w-1)+'"'+(w<=1?' disabled':'')+'>‹ Week '+(w-1)+'</button><button class="btn solid" data-act="goto" data-w="'+(w+1)+'"'+(w>=26?' disabled':'')+'>Week '+(w+1)+' ›</button></div>';
+  return h;
+}
+
+/* ---------- overview ---------- */
+function viewOverview(){
+  var t=totals(),now=weekNow(),M=maint();
+  var tiles='<div class="tiles">'+
+   '<div class="tile"><div class="v">'+t.weeks+'<span class="muted" style="font-size:20px"> / 26</span></div><div class="k">Weeks complete</div></div>'+
+   '<div class="tile"><div class="v">'+t.sessions+'<span class="muted" style="font-size:20px"> / 100</span></div><div class="k">Sessions done</div></div>'+
+   '<div class="tile"><div class="v">'+fmt(t.sets)+'</div><div class="k">Sets ticked</div></div>'+
+   '<div class="tile"><div class="v">'+fmt(Math.round(t.vol))+'<span class="muted" style="font-size:20px"> kg</span></div><div class="k">Volume lifted (kg × reps)</div></div></div>';
+  var bars=WEEKS.map(function(W){
+    var hi=Array.isArray(W.m)?W.m[1]:W.m,lo=Array.isArray(W.m)?W.m[0]:W.m;
+    var tip='Week '+W.n+': '+kcalTxt(W)+' kcal';
+    return '<div class="b'+(Array.isArray(W.m)?' rng':'')+'" style="--pc:var('+PHASES[W.ph].c+');height:'+(hi*100)+'%;'+(Array.isArray(W.m)?'--gap:'+(100*(1-lo/hi))+'%':'')+'" title="'+tip+'"></div>';
+  }).join('');
+  var labs=WEEKS.map(function(W){return '<span>'+((W.n===1||W.n%5===0||W.n===26)?W.n:'')+'</span>'}).join('');
+  var glance='<section class="card block"><h2>The plan at a glance</h2><p class="lede small">Daily calories as a share of your maintenance, week by week, with the step target underneath. Week 19 is the diet break.</p>'+
+   '<div class="glance" role="img" aria-label="Calories by week as a share of maintenance">'+bars+'<div class="mline"></div><span class="mlab">Maintenance · '+fmt(M)+' kcal</span></div><div class="glab">'+labs+'</div>'+
+   '<div class="gsteps"><div>8,000 steps</div><div>12,000 steps</div><div>15,000 steps</div></div></section>';
+  var cards=WEEKS.map(function(W){
+    var n=W.n,pips='';
+    if(n===1){var tk=tasks1();pips='<div class="pips">'+[0,1,2].map(function(i){return '<i class="'+(tk.charAt(i)==='1'?'on':'')+'"></i>'}).join('')+'</div>'}
+    else pips='<div class="pips">'+[0,1,2,3].map(function(si){return '<i class="'+(sessDone(n,si)?'on':'')+'"></i>'}).join('')+'</div>';
+    var L=S.log[n]||{};
+    return '<button class="wc'+(n===now?' now':'')+'" data-act="goto" data-w="'+n+'" style="--pc:var('+PHASES[W.ph].c+')">'+
+     '<span class="t"><span class="n">'+String(n).padStart(2,'0')+'</span>'+plate(W.ph)+'</span>'+
+     '<span class="dt">'+esc(rangeTxt(n))+'</span>'+
+     '<span class="m">'+kcalTxt(W)+' kcal · '+fmt(W.steps)+' steps</span>'+pips+
+     '<span class="mini"><span>Habits '+habitCount(n)+'/35</span><span>'+(L.w?L.w+' kg':'')+'</span></span></button>';
+  }).join('');
+  return tiles+glance+'<div class="wgrid">'+cards+'</div>';
+}
+
+/* ---------- progress ---------- */
+function pStats(){
+  var s=S.settings.w,last=null,lastN=0;
+  for(var n=26;n>=1;n--){if(weightOf(n)){last=weightOf(n);lastN=n;break}}
+  var ch=last!=null?last-s:null,pc=ch!=null?100*ch/s:null;
+  var wl=null;for(var n2=26;n2>=1;n2--){if(S.log[n2]&&S.log[n2].c){wl=S.log[n2].c;break}}
+  var w0=S.settings.waist0,wch=(wl!=null&&w0!=null)?wl-w0:null;
+  function sg(x,d){return x==null?'–':(x>0?'+':x<0?'−':'')+Math.abs(x).toFixed(d)}
+  return '<div class="tiles">'+
+   '<div class="tile"><div class="v">'+s+' kg</div><div class="k">Start weight</div></div>'+
+   '<div class="tile"><div class="v">'+(last!=null?last+' kg':'–')+'</div><div class="k">Latest'+(lastN?' · week '+lastN:'')+'</div></div>'+
+   '<div class="tile"><div class="v">'+sg(ch,1)+' kg</div><div class="k">Change'+(pc!=null?' · '+sg(pc,1)+'%':'')+'</div></div>'+
+   '<div class="tile"><div class="v">'+sg(wch,1)+' cm</div><div class="k">Waist change</div></div></div>';
+}
+function chartSvg(){
+  var host=$('#chart');if(!host)return;
+  var W=Math.max(300,Math.floor(host.clientWidth||600)),H=W<520?230:280;
+  var padL=40,padR=14,padT=14,padB=28,pw=W-padL-padR,ph=H-padT-padB;
+  var pts=[[0,S.settings.w]];for(var n=1;n<=26;n++){var v=weightOf(n);if(v)pts.push([n,v])}
+  var vs=pts.map(function(p){return p[1]}),mn=Math.floor(Math.min.apply(null,vs)-1),mx=Math.ceil(Math.max.apply(null,vs)+1);
+  if(mx-mn<4){mx=mn+4}
+  var step=(mx-mn)<=6?1:(mx-mn)<=14?2:5;mn=Math.floor(mn/step)*step;mx=Math.ceil(mx/step)*step;
+  function X(n){return padL+14+(pw-28)*n/26}function Y(v){return padT+ph*(1-(v-mn)/(mx-mn))}
+  var s='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="Weight by week">';
+  /* phase bands */
+  var bands=[[1,4,1],[5,11,2],[12,18,3],[19,19,4],[20,26,5]];
+  bands.forEach(function(b){s+='<rect x="'+X(b[0]-0.5)+'" y="'+padT+'" width="'+(X(b[1]+0.5)-X(b[0]-0.5))+'" height="'+ph+'" style="fill:var('+PHASES[b[2]].c+')" fill-opacity=".13"/>'});
+  for(var g=mn;g<=mx;g+=step){s+='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+Y(g)+'" y2="'+Y(g)+'" style="stroke:var(--line)" stroke-width="1"/><text x="'+(padL-8)+'" y="'+(Y(g)+4)+'" text-anchor="end" font-size="12" style="fill:var(--muted)" font-family="Barlow,system-ui,sans-serif">'+g+'</text>'}
+  [0,5,10,15,20,26].forEach(function(n){s+='<text x="'+X(n)+'" y="'+(H-8)+'" text-anchor="middle" font-size="12" style="fill:var(--muted)" font-family="Barlow,system-ui,sans-serif">'+(n===0?'Start':n)+'</text>'});
+  if(pts.length>1){s+='<polyline fill="none" style="stroke:var(--ink)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="'+pts.map(function(p){return X(p[0])+','+Y(p[1])}).join(' ')+'"/>'}
+  pts.forEach(function(p,i){var last=i===pts.length-1&&pts.length>1;s+='<circle cx="'+X(p[0])+'" cy="'+Y(p[1])+'" r="'+(last?5.5:4)+'" style="fill:'+(last?'var(--ink)':'var(--surface)')+';stroke:var(--ink)" stroke-width="2"><title>'+(p[0]?'Week '+p[0]:'Start')+': '+p[1]+' kg</title></circle>'});
+  if(pts.length>1){var lp=pts[pts.length-1];var ax=X(lp[0]);var anchor=ax>W-60?'end':'middle';s+='<text x="'+(anchor==='end'?ax:ax)+'" y="'+(Y(lp[1])-12)+'" text-anchor="'+anchor+'" font-size="13" font-weight="700" style="fill:var(--ink)" font-family="Barlow,system-ui,sans-serif">'+lp[1]+' kg</text>'}
+  s+='</svg>';
+  host.innerHTML=s;
+}
+function viewProgress(){
+  var rows='<tr class="ph"><td>Start</td><td><input type="number" inputmode="decimal" step="0.1" value="'+S.settings.w+'" data-t="cfg" data-f="w" data-fid="p.w0" aria-label="Start weight kg"></td><td><input type="number" inputmode="decimal" step="0.5" value="'+(S.settings.waist0!=null?S.settings.waist0:'')+'" data-t="cfg" data-f="waist0" data-fid="p.c0" aria-label="Start waist cm"></td><td></td><td></td><td></td><td class="ps">Photos</td></tr>';
+  WEEKS.forEach(function(W){
+    var n=W.n,L=S.log[n]||{},photo=PHOTO_WEEKS.indexOf(n)>=0;
+    rows+='<tr'+(photo?' class="ph"':'')+'><td>'+n+'</td>'+
+     '<td><input type="number" inputmode="decimal" step="0.1" value="'+(L.w!=null?L.w:'')+'" data-t="log" data-w="'+n+'" data-f="w" data-fid="p.w.'+n+'" aria-label="Week '+n+' weight kg"></td>'+
+     '<td><input type="number" inputmode="decimal" step="0.5" value="'+(L.c!=null?L.c:'')+'" data-t="log" data-w="'+n+'" data-f="c" data-fid="p.c.'+n+'" aria-label="Week '+n+' waist cm"></td>'+
+     '<td><input type="number" inputmode="numeric" step="100" value="'+(L.s!=null?L.s:'')+'" data-t="log" data-w="'+n+'" data-f="s" data-fid="p.s.'+n+'" aria-label="Week '+n+' average steps"></td>'+
+     '<td class="dl" data-delta="'+n+'"></td>'+
+     '<td class="ps">'+(n===1?'–':sessionsDone(n)+' / 4')+'</td>'+
+     '<td class="nt"><input type="text" value="'+esc(L.n||'')+'" data-t="log" data-w="'+n+'" data-f="n" data-fid="p.n.'+n+'" aria-label="Week '+n+' note"></td></tr>';
+  });
+  return '<section id="pstats">'+pStats()+'</section>'+
+   '<section class="card block"><h2>Weight by week</h2><p class="lede small">Weekly average weight against the plan phases. Shaded bands match the phase colours.</p><div class="flag" data-bind="flag-latest" role="status"></div><div id="chart"></div></section>'+
+   '<section class="block" style="padding:0"><h2 style="margin-top:20px">Progress tracker</h2><p class="lede small">One row at the end of each week. Shaded rows are photo weeks: front, side and back, same spot and light.</p>'+
+   '<div class="tscroll"><table class="pt"><thead><tr><th>Week</th><th>Weight kg</th><th>Waist cm</th><th>Avg steps</th><th>Change</th><th>Sessions</th><th>Notes</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>';
+}
+
+/* ---------- food ---------- */
+var planIdx=0;
+function viewFood(){
+  var P=FOOD.plans[planIdx];
+  var seg='<div class="seg2" role="group" aria-label="Meal plan">'+FOOD.plans.map(function(p,i){return '<button data-act="plan" data-i="'+i+'" aria-pressed="'+(i===planIdx)+'">'+fmt(p.k)+' kcal</button>'}).join('')+'</div>';
+  var meals=P.m.map(function(m){return '<div class="meal"><div class="k"><span>'+m[0]+'</span><span>'+m[2]+' kcal · '+m[3]+' g protein</span></div><h4>'+esc(m[1])+'</h4><ul>'+m[4].map(function(i){return '<li><span>'+esc(i[0])+'</span><b>'+esc(i[1])+'</b></li>'}).join('')+'</ul></div>'}).join('');
+  var go=FOOD.go.map(function(g,i){return '<li><span class="i">'+(i+1)+'</span><div><b>'+esc(g[0])+'</b><p>'+esc(g[1])+'</p></div><span class="nu">'+g[2]+' kcal<br>'+g[3]+' g protein</span></li>'}).join('');
+  var shop=FOOD.shop.map(function(c){return '<div><h4>'+c[0]+'</h4>'+c[1].map(function(it){var on=!!S.shop[it];return '<label class="'+(on?'on':'')+'">'+tick('data-t="shop" data-k="'+esc(it)+'" data-fid="sh.'+esc(it)+'"',on,it,true)+'<span>'+esc(it)+'</span></label>'}).join('')+'</div>'}).join('');
+  return '<section class="card block"><h2>Meal plans</h2><p class="lede small">Pick the plan closest to your calories for the week. Your protein target is <b><span data-bind="protein">'+protein()+'</span> g</b>; these plans are written for about 180 g, so top up with a little extra protein. Move the oats, rice or sweet potato up or down to match your target and keep the protein the same. Weigh meat raw, and rice and oats dry.</p>'+seg+
+   '<p class="small muted" style="margin:0 0 12px">'+esc(P.intro)+'</p>'+
+   '<div class="macros"><div><b>'+P.cal+'</b><span>Calories</span></div><div><b>'+P.p+' g</b><span>Protein</span></div><div><b>'+P.c+' g</b><span>Carbs</span></div><div><b>'+P.f+' g</b><span>Fat</span></div></div>'+
+   '<div class="meals">'+meals+'</div></section>'+
+   '<section class="card block"><h2>10 go-to meals</h2><p class="lede small">High protein, quick to make and easy to repeat. Values are approximate and vary by brand.</p><ol class="go">'+go+'</ol></section>'+
+   '<section class="card block"><h2>Shopping list</h2><p class="lede small">Tick off what you have and take the rest to the supermarket.</p><div class="shop">'+shop+'</div><div style="margin-top:12px"><button class="linkbtn" data-act="shopclear">Clear all ticks</button></div></section>';
+}
+
+/* ---------- numbers ---------- */
+function planRows(){
+  var blocks=[['1',1.00,1],['2–4',0.79,2],['5–6',0.76,5],['7–9',0.74,7],['10–11',0.71,10],['12–18',0.65,12],['19',[0.85,1],19],['20–24',0.65,20],['25–26',0.62,25]];
+  var M=maint();
+  return blocks.map(function(b){
+    var m=b[1],kc,mu,df;
+    if(Array.isArray(m)){kc=fmt(r50(m[0]*M))+'–'+fmt(r50(m[1]*M));mu=m[0].toFixed(2)+'–'+m[1].toFixed(2);df=''}
+    else{var k=r50(m*M);kc=fmt(k);mu=m.toFixed(2);df=(k<M?'−'+fmt(M-k):'0')}
+    return '<tr><td>'+b[0]+'</td><td>'+mu+'</td><td>'+kc+'</td><td>'+df+'</td></tr>';
+  }).join('');
+}
+function numDerived(){
+  var s=S.settings,M=maint(),k65=r50(.65*M);
+  return '<div class="form" style="margin-top:12px">'+
+   '<div class="fld"><span class="lbl">Height</span><div class="ro">'+s.ft+' ft '+s.inch+' in · '+heightCm().toFixed(1)+' cm</div></div>'+
+   '<div class="fld"><span class="lbl">Resting burn (Mifflin–St Jeor)</span><div class="ro">'+fmt(Math.round(bmr()))+' kcal</div></div>'+
+   '<div class="fld"><span class="lbl">Estimated maintenance (× 1.375)</span><div class="ro">'+fmt(maintEst())+' kcal</div></div>'+
+   '<div class="fld"><span class="lbl">Using for the plan</span><div class="ro">'+fmt(M)+' kcal '+(s.maint>0?'(tested)':'(estimate)')+'</div></div>'+
+   '<div class="fld"><span class="lbl">Daily protein (2 g per kg)</span><div class="ro">'+protein()+' g</div></div>'+
+   '<div class="fld"><span class="lbl">BMI at start</span><div class="ro">'+(s.w/Math.pow(heightCm()/100,2)).toFixed(1)+'</div></div></div>'+
+   '<div class="flag" style="display:block;margin-top:14px"><b>Heads-up on the deficit.</b> The calorie multipliers come from a plan written for someone who started at 111 kg. At '+fmt(M)+' kcal maintenance, × 0.65 is about '+fmt(k65)+' kcal a day, a deep cut at '+s.w+' kg. The book\'s own safety check applies: if you lose more than 1% of body weight a week for two weeks, or feel run-down, repeat last week\'s calories before moving on. The weekly check-in flags this for you.</div>';
+}
+function viewNumbers(){
+  var s=S.settings;
+  var form='<section class="card block"><h2>About you</h2><p class="lede small">Used for your protein target and a starting maintenance estimate. Weeks run Monday to Sunday.</p><div class="form">'+
+   '<div class="fld"><label for="c-w">Body weight (kg)</label><input id="c-w" type="number" inputmode="decimal" step="0.1" min="30" value="'+s.w+'" data-t="cfg" data-f="w" data-fid="c.w"></div>'+
+   '<div class="fld"><label for="c-ft">Height (ft)</label><input id="c-ft" type="number" inputmode="numeric" min="3" max="8" value="'+s.ft+'" data-t="cfg" data-f="ft" data-fid="c.ft"></div>'+
+   '<div class="fld"><label for="c-in">Height (in)</label><input id="c-in" type="number" inputmode="numeric" min="0" max="11" value="'+s.inch+'" data-t="cfg" data-f="inch" data-fid="c.in"></div>'+
+   '<div class="fld"><label for="c-a">Age</label><input id="c-a" type="number" inputmode="numeric" min="14" max="90" value="'+s.age+'" data-t="cfg" data-f="age" data-fid="c.a"></div>'+
+   '<div class="fld"><label for="c-s">Sex (for the estimate only)</label><select id="c-s" data-t="cfg" data-f="sex" data-fid="c.s"><option value="m"'+(s.sex!=='f'?' selected':'')+'>Male</option><option value="f"'+(s.sex==='f'?' selected':'')+'>Female</option></select></div>'+
+   '<div class="fld"><label for="c-m">Tested maintenance (kcal)</label><input id="c-m" type="number" inputmode="numeric" step="50" min="1000" placeholder="'+maintEst()+'" value="'+(s.maint!=null?s.maint:'')+'" data-t="cfg" data-f="maint" data-fid="c.m"><span class="hint">From Week 1. Leave empty to use the estimate.</span></div>'+
+   '<div class="fld"><label for="c-d">Plan start (Week 1)</label><input id="c-d" type="date" value="'+esc(s.start)+'" data-t="cfg" data-f="start" data-fid="c.d"></div>'+
+   '</div><div id="numDerived">'+numDerived()+'</div></section>';
+  var table='<section class="card block"><h2>Your calories by week</h2><p class="lede small">Your maintenance multiplied by the number for each block of weeks, rounded to the nearest 50.</p><table class="ptable"><thead><tr><th>Weeks</th><th>× Maintenance</th><th>Calories</th><th>Deficit</th></tr></thead><tbody id="planRows">'+planRows()+'</tbody></table></section>';
+  var rules='<section class="card block"><h2>The method</h2><div class="rules">'+
+   '<div class="rule"><b>2</b><strong>Working sets per exercise</strong><span>Warm-ups do not count. Every working set is hard work with clean form.</span></div>'+
+   '<div class="rule"><b>6–12</b><strong>Reps per set</strong><span>Choose a weight you can lift for at least 6 good reps.</span></div>'+
+   '<div class="rule"><b>Form</b><strong>Comes first</strong><span>Control the weight on the way down. Never trade form for an extra rep.</span></div></div>'+
+   '<h3 style="margin-top:18px">Add reps, then weight</h3><p class="lede small">Each week, aim to add 1 or 2 reps to each set. Once you reach 12 reps on both sets, add a little weight and build back up from around 6. Log weight and reps for every set, for example 60 × 10. Next week, beat it. The boxes show last time\'s numbers in grey.</p>'+
+   '<table class="ptable" style="max-width:420px"><thead><tr><th>Week</th><th>Weight</th><th>Set 1</th><th>Set 2</th></tr></thead><tbody><tr><td>1</td><td>60 kg</td><td>9</td><td>8</td></tr><tr><td>2</td><td>60 kg</td><td>10</td><td>10</td></tr><tr><td>3</td><td>60 kg</td><td>12</td><td>11</td></tr><tr><td>4</td><td>60 kg</td><td>12</td><td>12</td></tr><tr><td>5</td><td>62.5 kg</td><td>7</td><td>6</td></tr></tbody></table>'+
+   '<h3 style="margin-top:18px">Your week</h3><p class="lede small">Four sessions on an upper/lower split: Mon Lower 1, Tue Upper 1, Thu Lower 2, Fri Upper 2. Any four days work as long as the two lower sessions are not back to back.</p>'+
+   '<h3 style="margin-top:18px">Steps and check-ins</h3><p class="lede small">8,000 steps in weeks 1–4, 12,000 in weeks 5–20, 15,000 in weeks 21–26. Count every step across the day. Week 19 is a diet break: eat at or just under maintenance, keep training and steps the same, and expect the scale to rise a little. Weigh in every morning and track the weekly average, measure your waist once a week, and take photos every 4 weeks.</p>'+
+   '<div class="note"><b>When to adjust.</b> Scale flat for two weeks? Check your tracking before cutting more: weigh food, and count oils, drinks and bites. Losing over 1% of body weight a week for two weeks, or feeling run-down? Repeat last week\'s calories before moving on.</div></section>';
+  return form+table+rules;
+}
+
+/* ---------- derived refresh (no re-render, keeps focus) ---------- */
+function refreshBindings(){
+  $$('[data-bind="protein"]').forEach(function(e){e.textContent=protein()});
+  $$('[data-bind="protein2"]').forEach(function(e){e.textContent=protein()});
+  $$('[data-bind="maintest"]').forEach(function(e){e.textContent=fmt(maintEst())});
+  $$('[data-bind="w2"]').forEach(function(e){e.textContent=fmt(r50(.79*maint()))});
+  $$('[data-bind="flag"]').forEach(function(e){var w=+e.dataset.w;e.innerHTML=flagsFor(w).map(function(m){return esc(m)}).join('<br>')});
+  $$('[data-bind="flag-latest"]').forEach(function(e){var out='';for(var n=26;n>=1;n--){if(weightOf(n)){var f=flagsFor(n);if(f.length)out='<b>Week '+n+':</b> '+esc(f[0]);break}}e.innerHTML=out});
+  var nd=$('#numDerived');if(nd)nd.innerHTML=numDerived();
+  var pr=$('#planRows');if(pr)pr.innerHTML=planRows();
+  var ps=$('#pstats');if(ps)ps.innerHTML=pStats();
+  $$('[data-delta]').forEach(function(e){
+    var n=+e.dataset.delta,a=weightOf(n),b=weightOf(n-1);
+    if(a&&b){var d=a-b;e.textContent=(d>0?'+':d<0?'−':'')+Math.abs(d).toFixed(1)+' kg'}else e.textContent='';
+  });
+  if($('#chart'))chartSvg();
+}
+
+/* ---------- routing + render ---------- */
+var TAB='week',WK=1,lastHash='';
+var TABS=[['week','Train'],['overview','Overview'],['progress','Progress'],['food','Food'],['numbers','Numbers']];
+function parseHash(){
+  var h=(location.hash||'').slice(1),m=h.match(/^week-(\d{1,2})$/);
+  if(m){TAB='week';WK=clamp(+m[1],1,26)}
+  else if(['overview','progress','food','numbers'].indexOf(h)>=0)TAB=h;
+  else{TAB='week';WK=clamp(weekNow(),1,26)}
+}
+function go(tab,w){
+  TAB=tab;if(w)WK=clamp(w,1,26);
+  var h=tab==='week'?'week-'+WK:tab;lastHash='#'+h;
+  try{location.hash=h}catch(e){}
+  render();window.scrollTo(0,0);
+}
+function renderTabs(){
+  $('#tabs').innerHTML=TABS.map(function(t){return '<button data-act="tab" data-tab="'+t[0]+'"'+(t[0]===TAB?' aria-current="page"':'')+'>'+t[1]+'</button>'}).join('');
+}
+function render(){
+  var a=document.activeElement,fid=a&&a.dataset&&a.dataset.fid;
+  var html=TAB==='week'?viewTrain(WK):TAB==='overview'?viewOverview():TAB==='progress'?viewProgress():TAB==='food'?viewFood():viewNumbers();
+  $('#view').innerHTML=html;renderTabs();refreshBindings();pendingRender=false;
+  if(fid){var el=$('[data-fid="'+(window.CSS&&CSS.escape?CSS.escape(fid):fid)+'"]');if(el)try{el.focus({preventScroll:true})}catch(e){}}
+}
+
+/* ---------- events ---------- */
+var view=document.getElementById('view');
+document.addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('[data-act]');if(!b)return;
+  var act=b.dataset.act;
+  if(act==='tab')go(b.dataset.tab);
+  else if(act==='goto'){var w=+b.dataset.w;if(w>=1&&w<=26)go('week',w)}
+  else if(act==='jump'){var el=document.getElementById('sess-'+b.dataset.si);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}
+  else if(act==='all'){
+    var si=+b.dataset.si,st=sessionStats(WK,si),on=st.done!==st.total;
+    WEEKS[WK-1].ss[si].ex.forEach(function(_,ei){for(var n=0;n<2;n++)patchSet(setKey(WK,si,ei,n),{d:on?1:0})});
+    render();
+  }
+  else if(act==='plan'){planIdx=+b.dataset.i;render()}
+  else if(act==='shopclear'){S.shop={};touch('shop');render()}
+});
+document.addEventListener('change',function(e){
+  var t=e.target,k=t.dataset&&t.dataset.t;if(!k)return;
+  if(k==='set'){patchSet(t.dataset.k,{d:t.checked?1:0});render()}
+  else if(k==='hab'){setHab(+t.dataset.w,+t.dataset.i,t.checked);render()}
+  else if(k==='task'){setTask(+t.dataset.i,t.checked);render()}
+  else if(k==='shop'){if(t.checked)S.shop[t.dataset.k]=1;else delete S.shop[t.dataset.k];touch('shop');render()}
+  else if(k==='wsel'){go('week',+t.value)}
+  else if(k==='cfg'){
+    var f=t.dataset.f,v;
+    if(f==='sex'||f==='start')v=t.value;
+    else if(f==='maint'||f==='waist0'){v=num(t.value);if(v!=null&&v<=0)v=null}
+    else{v=num(t.value);if(v==null)return;if(f==='ft')v=clamp(Math.round(v),3,8);if(f==='inch')v=clamp(Math.round(v),0,11);if(f==='age')v=clamp(Math.round(v),14,90)}
+    if(f==='start'&&!v)return;
+    setCfg(f,v);
+    if(f==='start'||f==='sex'){render()}else refreshBindings();
+  }
+});
+document.addEventListener('input',function(e){
+  var t=e.target,k=t.dataset&&t.dataset.t;if(!k)return;
+  if(k==='kg')patchSet(t.dataset.k,{k:num(t.value)});
+  else if(k==='rp')patchSet(t.dataset.k,{r:num(t.value)});
+  else if(k==='log'){var f=t.dataset.f,w=+t.dataset.w;setLog(w,f,f==='n'?(t.value||null):num(t.value));if(f==='w'||f==='c')refreshBindings()}
+  else if(k==='cfg'){
+    var f2=t.dataset.f,v=num(t.value);
+    if(f2==='w'&&v>=30){setCfg('w',v);refreshBindings()}
+    else if(f2==='maint'){setCfg('maint',v>0?v:null);refreshBindings()}
+    else if(f2==='waist0'){setCfg('waist0',v);refreshBindings()}
+    else if((f2==='ft'||f2==='inch'||f2==='age')&&v!=null){setCfg(f2,f2==='ft'?clamp(Math.round(v),3,8):f2==='inch'?clamp(Math.round(v),0,11):clamp(Math.round(v),14,90));refreshBindings()}
+  }
+});
+document.addEventListener('focusout',function(){
+  if(!pendingRender)return;
+  setTimeout(function(){var a=document.activeElement;if(pendingRender&&!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)))render()},150);
+});
+window.addEventListener('hashchange',function(){if(location.hash===lastHash)return;parseHash();render()});
+var rt=null;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){if($('#chart'))chartSvg()},120)});
+
+parseHash();render();initCloud();
+})();
+</script>
+
+</body></html>
